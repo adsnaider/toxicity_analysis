@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Soft Spoken</title>
+
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <!-- Bootstrap CDN -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.bundle.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.1/Chart.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/autosize@4.0.0/dist/autosize.min.js"></script>
+        <link href="flat-ui.css" rel="stylesheet">
+        <style>
+            .input-group {
+                margin-left: auto;
+                margin-right: auto;
+                width: 60%;
+                margin-top: 4%;
+            }
+
+            .pushup {
+                padding-top: 8%;
+                padding-bottom: 4%;
+            }
+
+            .form-control {
+                height: 20%;
+                width: 60%;
+                font-size: 1em;
+            }
+
+            #Upper-Section {
+                position: relative;
+                background-color:#2ecc71;
+            }
+
+            #titleFont {
+                font-size: 400%;
+            }
+
+            #Graph-Section {
+                position: relative;
+            }
+
+            #chartDimensions {
+                margin-left: auto;
+                margin-right: auto;
+                width: 60%;
+                height: 20%;
+            }
+
+            ::-webkit-scrollbar {
+                display: none;
+            }
+        </style>
+    </head>
+    <body>
+        <section id = 'Upper-Section'>
+            <div class="pushup text-center">
+                <h1 style="color:white" id = "titleFont">Soft Spoken</h1>
+                    <div class="input-group">
+                         <textarea id='MSG' name="MSG" class="form-control" rows="1" placeholder="Enter Text Here"></textarea>
+                        <button id="Button" type="submit" class="btn btn-inverse">Submit</button>
+                    </div>
+            </div>
+        </section>
+        <section id="Graph-Section">
+            <div class="text-center">
+                <h2>Toxic Levels</h2>
+            </div>
+            <div id="chartDimensions">
+                <canvas id="myChart" class="text-center" width="100" height="50"></canvas>
+            </div>
+        </section>
+
+        <script>
+          autosize(document.querySelectorAll('textarea'));
+
+          var invoice_status_data = [0, 0, 0, 0, 0, 0];
+          var chart = null
+
+          function invoice_status_chart() {
+            var ctx = document.getElementById("myChart");
+            chart = new Chart(ctx, {
+              type: 'bar',
+              data: {
+                  labels: ["Toxic", "Severe Toxic", "Obscene", "Threat", "Insult", "Identity Hate"],
+                  datasets: [{
+                      label: 'Percentage of Toxicity',
+                      data: invoice_status_data,
+                      backgroundColor: [
+                          'rgba(120, 50, 42, 0.2)',
+                          'rgba(94, 55, 110, 0.2)',
+                          'rgba(146, 81, 29, 0.2)',
+                          'rgba(143, 145, 145, 0.2)',
+                          'rgba(43, 52, 62, 0.2)',
+                          'rgba(41, 87, 117, 0.2)'
+                      ],
+                      borderColor: [
+                          'rgba(120, 50, 42, 1)',
+                          'rgba(94, 55, 110, 1)',
+                          'rgba(146, 81, 29, 1)',
+                          'rgba(143, 145, 145, 1)',
+                          'rgba(43, 52, 62, 1)',
+                          'rgba(41, 87, 117, 1)'
+                      ],
+                      borderWidth: 1
+                  }]
+              },
+              options: {
+                  legend: {
+                      display: false
+                  },
+                  scales: {
+                      yAxes: [{
+                          scaleLabel: {
+                              display: true,
+                              labelString: 'Percentage'
+                          },
+                          ticks: {
+                              beginAtZero:true
+                          }
+                      }],
+                      xAxes: [{
+                              scaleLabel: {
+                                  display: true,
+                                  labelString: 'Toxic Types'
+                              }
+                      }]
+                  },
+                  animations: {
+                      onProgress: function(animation) {
+                          progress.value = animation.animationObject.currentStep
+                          / animation.animationObject.numSteps;
+                      },
+                      easing: 'easeInBounce'
+                  }
+              }
+            });
+          }
+
+          function collect_data() {
+            $.post("http://127.0.0.1:9876/handle_data", $("#MSG"),
+                function(data, textStatus, jqXHR) {
+                  invoice_status_data = JSON.parse(data)
+                }
+              );
+            };
+
+          $("#Button").click(function() {
+            if (chart != null) {
+              chart.destroy();
+            }
+            collect_data();
+            invoice_status_chart();
+          });
+
+          jQuery(document).ready(function($) {
+            jQuery(window).resize(invoice_status_chart);
+            invoice_status_chart();
+          });
+
+        </script>
+    </body>
+</html>
