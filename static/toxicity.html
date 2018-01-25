@@ -146,6 +146,7 @@
             $.post("http://127.0.0.1:9876/handle_data", $("#MSG"),
                 function(data, textStatus, jqXHR) {
                   invoice_status_data = JSON.parse(data)
+                  invoice_status_chart();
                 }
               );
             };
@@ -155,7 +156,6 @@
               chart.destroy();
             }
             collect_data();
-            invoice_status_chart();
           });
 
           jQuery(document).ready(function($) {
