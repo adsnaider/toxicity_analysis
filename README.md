@@ -1,5 +1,5 @@
 # Soft Spoken
-### By Adam, Mathew, Shivan, and Michael
+### By Adam Snaider, Mathew Li, Shivan Vipani, and Michael Wono
 
 ## About
 This project was created at [SB Hacks IV](https://www.sbhacks.com/)
