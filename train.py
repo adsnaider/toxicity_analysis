@@ -14,7 +14,7 @@ test_tfrecords = 'data/test.tfrecords'
 learning_rate = 0.1
 batch_size = 32
 num_hidden = 64
-num_epochs = 5
+num_epochs = 16
 
 possible_labels = [
     'toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate'
@@ -25,8 +25,8 @@ with train_graph.as_default():
 
   def _parse_function(example_proto):
     features = {
-        'text': tf.FixedLenFeature([200], tf.int64),
-        'labels': tf.FixedLenFeature([6], tf.int64)
+        'text': tf.FixedLenFeature([vocab.maxlen], tf.int64),
+        'labels': tf.FixedLenFeature([len(possible_labels)], tf.int64)
     }
     parsed_features = tf.parse_single_example(example_proto, features)
     return parsed_features['text'], parsed_features['labels']

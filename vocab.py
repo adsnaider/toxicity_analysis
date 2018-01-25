@@ -29,22 +29,25 @@ def maybe_load(filename):
   return None
 
 
+def clean_sentence(sentences):
+  printable = set(string.printable)
+  print('Cleaning and tokenizing')
+  for i in range(len(sentences)):
+    if i % 1000 == 0:
+      print("Step {}/{}".format(i, len(sentences)))
+    sentences[i] = word_tokenize(filter(lambda x: x in printable, sentences[i]))
+    for x in range(len(sentences[i])):
+      sentences[i][x] = sentences[i][x].lower().strip('=\\|/.,?!')
+
+  return sentences
+
+
 def get_and_clean_data(data):
   save_file = 'data/cleaned.pickle'
   restore = maybe_load(save_file)
   if (restore is None):
     sentences = data['comment_text'].fillna('CVxTz').values
-    printable = set(string.printable)
-
-    print('Cleaning and tokenizing')
-    for i in range(len(sentences)):
-      if i % 1000 == 0:
-        print("Step {}/{}".format(i, len(sentences)))
-      sentences[i] = word_tokenize(
-          filter(lambda x: x in printable, sentences[i]))
-      for x in range(len(sentences[i])):
-        sentences[i][x] = sentences[i][x].lower().strip('=\\|/.,?!')
-
+    sentences = clean_sentence(sentences)
     save(sentences, save_file)
     return sentences
   else:
@@ -159,19 +162,25 @@ def resize(text, maxlen, empty):
   return resized
 
 
-max_features = 20000
+max_features = 50000
 UNKNOWN = 0
 EMPTY = max_features + 1
 possible_labels = [
     'toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate'
 ]
-maxlen = 200
+maxlen = 30
 
-if __name__ == '__main__':
+
+def update():
   dataset = pd.read_csv('data/train.csv')
   sentences = get_and_clean_data(dataset)
   word_count = get_word_count(sentences)
   word2index = get_word2index(word_count)
+  return dataset, sentences, word_count, word2index
+
+
+if __name__ == '__main__':
+  dataset, sentences, word_count, word2index = update()
   text, labels = convert_training_data(word2index, sentences, dataset)
   text = resize(text, maxlen, EMPTY).astype(np.int64)
   labels = labels.astype(np.int64)
