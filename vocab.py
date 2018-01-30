@@ -13,6 +13,7 @@ from nltk.tokenize import word_tokenize
 
 import pickle
 import string
+import csv
 
 
 def save(obj, filename):
@@ -181,8 +182,14 @@ def update():
 
 if __name__ == '__main__':
   dataset, sentences, word_count, word2index = update()
+
+  # Write embedding mappings.
+  with open('output/embedding_mapping.tsv', 'wb') as csv_file:
+    writer = csv.writer(csv_file, delimiter='\t')
+    for key, value in word2index.items():
+      writer.writerow([key, value])
+
   text, labels = convert_training_data(word2index, sentences, dataset)
-  text = resize(text, maxlen, EMPTY).astype(np.int64)
   labels = labels.astype(np.int64)
   print('Text, Labels')
   print(text, labels)

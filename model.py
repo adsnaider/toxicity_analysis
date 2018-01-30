@@ -23,7 +23,8 @@ class Model():
     self.hidden_size = hidden_size
     self.output_size = output_size
 
-    self.embeddings = weight_variable([vocab_size, embedding_size])
+    self.embeddings = weight_variable(
+        [vocab_size, embedding_size], name='Embeddings')
     self.w1 = weight_variable([embedding_size, hidden_size], name='W1')
     self.w2 = weight_variable([hidden_size, hidden_size], name='W2')
     self.w3 = weight_variable([hidden_size, hidden_size], name='W3')
@@ -36,8 +37,8 @@ class Model():
 
   def inference(self, ids, training, name=None):
     drop = 0.5
-    x = tf.reduce_mean(
-        tf.nn.embedding_lookup(self.embeddings, ids, name='X'), axis=1)
+    x = tf.nn.embedding_lookup_sparse(
+        self.embeddings, ids, sp_weights=None, combiner='sqrtn')
     hidden = tf.nn.relu(tf.matmul(x, self.w1) + self.b1)
     dropout = tf.layers.dropout(hidden, drop, training=training)
     hidden = tf.nn.relu(tf.matmul(dropout, self.w2) + self.b2)
@@ -52,8 +53,8 @@ class Model():
         name=name)
 
   def optimizer(self, loss, learning_rate=0.1, global_step=None, name=None):
-    return tf.train.GradientDescentOptimizer(learning_rate).minimize(
-        loss, global_step)
+    return tf.train.GradientDescentOptimizer(
+        learning_rate, name=name).minimize(loss, global_step)
 
   def accuracy(self, predictions, labels, name=None):
     return tf.reduce_mean(

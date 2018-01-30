@@ -1,4 +1,5 @@
-checkpoint/*
-summaries/*
+output/*
 *.pyc
 *.hdf5
+*.pickle
+*.tfrecords

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
 
@@ -11,6 +12,9 @@ import json
 import vocab
 import model
 import pickle
+
+import glog as log
+log.setLevel('INFO')
 
 app = Flask(__name__)
 app.config.from_object(__name__)
@@ -37,15 +41,20 @@ def predict(message):
       'toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate'
   ]
 
+  indices = np.zeros([len(new_message), 2])
+  indices[:, 1] = range(len(new_message))
   predict_graph = tf.Graph()
   with predict_graph.as_default():
-    tf_input = tf.constant([new_message])
+    tf_input = tf.SparseTensor(indices, new_message, [1, len(new_message)])
     deep_model = model.Model(300, vocab.max_features + 2, num_hidden,
                              len(possible_labels))
     result = tf.nn.sigmoid(deep_model.inference(tf_input, False, name='out'))
     global_step = tf.train.get_or_create_global_step()
 
-    with tf.train.MonitoredTrainingSession(checkpoint_dir='checkpoint') as sess:
+    checkpoint_dir = 'output/checkpoint/GradientDescent'
+
+    with tf.train.MonitoredTrainingSession(
+        checkpoint_dir=checkpoint_dir) as sess:
       return sess.run(result)
 
 
@@ -62,12 +71,13 @@ def send_css():
 @app.route('/handle_data', methods=['POST', 'GET'])
 def handle_data():
   if request.method == 'POST':
-    #  print(request.form)
+    log.debug(request.form)
     msg = request.form['MSG']
     result = predict(msg)
     result = json.dumps(result[0].tolist())
+    log.info(result)
     return result
 
 
 if __name__ == '__main__':
-  app.run(debug=True, port=9876)
+  app.run(port=9876)
