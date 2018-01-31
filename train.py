@@ -60,11 +60,11 @@ with train_graph.as_default():
 
   global_step = tf.train.get_or_create_global_step()
 
-  model = model.Model(300, vocab.max_features + 2, num_hidden,
-                      len(possible_labels))
-  logits = model.inference(train_element, True, name='train_logits')
-  loss = model.loss(logits, tf.cast(train_label, tf.float32), name='loss')
-  optimizer = model.optimizer(
+  train_model = model.Model(300, vocab.max_features + 2, num_hidden,
+                            len(possible_labels))
+  logits = train_model.inference(train_element, True, name='train_logits')
+  loss = train_model.loss(logits, tf.cast(train_label, tf.float32), name='loss')
+  optimizer = train_model.optimizer(
       loss,
       learning_rate=learning_rate,
       global_step=global_step,
@@ -73,12 +73,13 @@ with train_graph.as_default():
   with tf.name_scope('predictions'):
     train_predictions = tf.nn.sigmoid(logits, name='train-predictions')
     valid_predictions = tf.nn.sigmoid(
-        model.inference(valid_element, False), name='validation-predictions')
+        train_model.inference(valid_element, False),
+        name='validation-predictions')
 
   with tf.name_scope('accuracy'):
-    train_accuracy = model.accuracy(
+    train_accuracy = train_model.accuracy(
         train_predictions, train_label, name='train-accuracy')
-    valid_accuracy = model.accuracy(
+    valid_accuracy = train_model.accuracy(
         valid_predictions, valid_label, name='valid-accuracy')
 
   with tf.name_scope('summaries'):
@@ -99,14 +100,15 @@ with train_graph.as_default():
       summary_writer=None,
       scaffold=None,
       summary_op=summary_op)
-
+  """
   with tf.train.MonitoredTrainingSession(
       hooks=[saver_hook, summary_hook], checkpoint_dir=checkpoint_dir) as sess:
     while not sess.should_stop():
       sess.run(optimizer)
+      """
 
 test_graph = tf.Graph()
-with tf.test_graph.as_default():
+with test_graph.as_default():
   test_dataset = tf.data.TFRecordDataset(test_tfrecords)
   test_dataset = test_dataset.map(_parse_function)
   test_dataset = test_dataset.apply(
@@ -115,14 +117,15 @@ with tf.test_graph.as_default():
   test_iterator = test_dataset.make_one_shot_iterator()
   test_element, test_label = test_iterator.get_next()
 
-  model = model.Model(300, vocab.max_features + 2, num_hidden,
-                      len(possible_labels))
-
+  test_model = model.Model(300, vocab.max_features + 2, num_hidden,
+                           len(possible_labels))
   test_predictions = tf.nn.sigmoid(
-      model.inference(test_element, False), name='test-predictions')
-  test_accuracy = model.accuracy(
+      test_model.inference(test_element, False), name='test-predictions')
+  test_accuracy = test_model.accuracy(
       test_predictions, test_label, name='test-accuracy')
   test_summary = tf.summary.scalar('test accuracy', test_accuracy)
+
+  global_step = tf.train.get_or_create_global_step()
 
   with tf.train.MonitoredTrainingSession(checkpoint_dir=checkpoint_dir) as sess:
     running_accuracy = 0
