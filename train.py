@@ -1,5 +1,8 @@
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
+
+import os
 
 import tensorflow as tf
 
@@ -7,13 +10,14 @@ import vocab
 import model
 
 import glog as log
+
 log.setLevel('INFO')
 
 train_tfrecords = 'data/train.tfrecords'
 valid_tfrecords = 'data/valid.tfrecords'
 test_tfrecords = 'data/test.tfrecords'
 
-learning_rate = 0.1
+learning_rate = 0.01
 batch_size = 32
 num_hidden = 64
 num_epochs = 128
@@ -32,8 +36,8 @@ def _parse_function(example_proto):
   return parsed_features['text'], parsed_features['labels']
 
 
-checkpoint_dir = 'output/checkpoint/GradientDescent'
-summaries_dir = 'output/summaries/GradientDescent'
+checkpoint_dir = 'output/checkpoint/'
+summaries_dir = 'output/summaries/'
 
 train_graph = tf.Graph()
 with train_graph.as_default():
@@ -71,41 +75,50 @@ with train_graph.as_default():
       name='GradientDescent')
 
   with tf.name_scope('predictions'):
-    train_predictions = tf.nn.sigmoid(logits, name='train-predictions')
+    train_predictions = tf.nn.sigmoid(logits, name='train_predictions')
     valid_predictions = tf.nn.sigmoid(
         train_model.inference(valid_element, False),
-        name='validation-predictions')
+        name='validation_predictions')
 
   with tf.name_scope('accuracy'):
     train_accuracy = train_model.accuracy(
-        train_predictions, train_label, name='train-accuracy')
+        train_predictions, train_label, name='train_accuracy')
     valid_accuracy = train_model.accuracy(
-        valid_predictions, valid_label, name='valid-accuracy')
+        valid_predictions, valid_label, name='valid_accuracy')
+
+  with tf.name_scope('auc'):
+    train_auc, update_train_auc = tf.metrics.auc(train_label, train_predictions)
+    valid_auc, update_valid_auc = tf.metrics.auc(valid_label, valid_predictions)
 
   with tf.name_scope('summaries'):
     loss_summary = tf.summary.scalar('loss', loss)
     train_summary = tf.summary.scalar('train accuracy', train_accuracy)
     validation_summary = tf.summary.scalar('validation accuracy',
                                            valid_accuracy)
+    train_auc_summary = tf.summary.scalar('train AUC', train_auc)
+    valid_auc_summary = tf.summary.scalar('valid AUC', valid_auc)
     summary_op = tf.summary.merge_all()
+
+  train_op = tf.group(optimizer, update_train_auc, update_valid_auc)
 
   saver_hook = tf.train.CheckpointSaverHook(
       checkpoint_dir=checkpoint_dir,
-      save_steps=1500,
+      save_secs=60,
+      save_steps=None,
       checkpoint_basename='model.ckpt',
       scaffold=None)
   summary_hook = tf.train.SummarySaverHook(
-      save_steps=1500,
-      output_dir=summaries_dir,
+      save_steps=200,
+      output_dir=os.path.join(summaries_dir, 'train/'),
       summary_writer=None,
       scaffold=None,
       summary_op=summary_op)
-  """
+
   with tf.train.MonitoredTrainingSession(
       hooks=[saver_hook, summary_hook], checkpoint_dir=checkpoint_dir) as sess:
+    log.info('Starting training')
     while not sess.should_stop():
-      sess.run(optimizer)
-      """
+      sess.run(train_op)
 
 test_graph = tf.Graph()
 with test_graph.as_default():
@@ -120,24 +133,28 @@ with test_graph.as_default():
   test_model = model.Model(300, vocab.max_features + 2, num_hidden,
                            len(possible_labels))
   test_predictions = tf.nn.sigmoid(
-      test_model.inference(test_element, False), name='test-predictions')
+      test_model.inference(test_element, False), name='test_predictions')
   test_accuracy = test_model.accuracy(
-      test_predictions, test_label, name='test-accuracy')
-  test_summary = tf.summary.scalar('test accuracy', test_accuracy)
+      test_predictions, test_label, name='test_accuracy')
+  test_auc, update_op = tf.metrics.auc(test_label, test_predictions)
 
-  global_step = tf.train.get_or_create_global_step()
+  test_accuracy_summary = tf.summary.scalar('test accuracy', test_accuracy)
+  test_auc_summary = tf.summary.scalar('test AUC', test_auc)
+  summary_op = tf.summary.merge_all()
+  global_step = tf.train.create_global_step()
+  global_step_increment = tf.assign(global_step, global_step + 1)
 
-  with tf.train.MonitoredTrainingSession(checkpoint_dir=checkpoint_dir) as sess:
-    running_accuracy = 0
-    count = 0
-    log.debug('Meassuring testing accuracy')
+  test_op = tf.group(update_op, global_step_increment)
+
+  summary_hook = tf.train.SummarySaverHook(
+      save_steps=1,
+      output_dir=os.path.join(summaries_dir, 'test/'),
+      summary_writer=None,
+      scaffold=None,
+      summary_op=summary_op)
+
+  with tf.train.MonitoredTrainingSession(
+      hooks=[summary_hook], checkpoint_dir=checkpoint_dir) as sess:
+    log.info('Meassuring testing performance')
     while not sess.should_stop():
-      current_accuracy = sess.run(test_accuracy)
-      running_accuracy += current_accuracy
-      count += 1
-      log.debug(
-          'Step {}:\tRunning accuracy: {:.2f}\tCurrent accuracy: {:.2f}'.format(
-              count, running_accuracy / count, current_accuracy))
-  testing_accuracy = running_accuracy / count
-  log.info('Finished training with a testing accuracy of {:.2f}%%'.format(
-      testing_accuracy * 100))
+      sess.run(test_op)

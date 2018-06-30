@@ -51,7 +51,7 @@ def predict(message):
     result = tf.nn.sigmoid(deep_model.inference(tf_input, False, name='out'))
     global_step = tf.train.get_or_create_global_step()
 
-    checkpoint_dir = 'output/checkpoint/GradientDescent'
+    checkpoint_dir = 'output/checkpoint/'
 
     with tf.train.MonitoredTrainingSession(
         checkpoint_dir=checkpoint_dir) as sess:

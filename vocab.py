@@ -9,7 +9,7 @@ import tensorflow as tf
 import sys
 import os
 
-from nltk.tokenize import word_tokenize
+from nltk.tokenize import RegexpTokenizer
 
 import pickle
 import string
@@ -31,12 +31,14 @@ def maybe_load(filename):
 
 
 def clean_sentence(sentences):
+  tokenizer = RegexpTokenizer(r'\w+')
   printable = set(string.printable)
   print('Cleaning and tokenizing')
   for i in range(len(sentences)):
     if i % 1000 == 0:
       print("Step {}/{}".format(i, len(sentences)))
-    sentences[i] = word_tokenize(filter(lambda x: x in printable, sentences[i]))
+    sentences[i] = tokenizer.tokenize(
+        filter(lambda x: x in printable, sentences[i]))
     for x in range(len(sentences[i])):
       sentences[i][x] = sentences[i][x].lower().strip('=\\|/.,?!')
 

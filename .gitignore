@@ -1,4 +1,6 @@
-output/*
+output/
+data/
+
 *.pyc
 *.hdf5
 *.pickle
